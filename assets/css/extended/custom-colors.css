@@ -1,0 +1,28 @@
+/* 白天模式（Light Mode） */
+body:not(.dark) {
+  background-color: #F4F1F8;
+  color: #1F1F1F;
+}
+
+a {
+  color: #1F1F1F;
+}
+
+a:hover {
+  color: #AD88C6;
+}
+
+
+/* 暗夜模式（Dark Mode） */
+body.dark {
+  background-color: #1A1A1A; /* 可以改成暗紫系或偏黑色 */
+  color: #EAEAEA;
+}
+
+body.dark a {
+  color: #C7C7F4;  /* 暗紫系的链接色，适合夜间 */
+}
+
+body.dark a:hover {
+  color: #A5B8A5; /* 同样的 hover 色调 */
+}
