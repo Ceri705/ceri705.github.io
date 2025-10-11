@@ -1,4 +1,7 @@
-baseURL = "https://solien.github.io/"
+baseURL = "https://ceri705.github.io/"
+relativeURLs = false
+canonifyURLs = true
+
 languageCode = "en-us"
 title = "M.Solien's log"
 theme = "PaperMod"
@@ -29,6 +32,7 @@ buildExpired = true
   footerCopyright = "© 2025 M.Solien. All rights reserved. Content on this site may not be reproduced without permission."
   [params.assets]
   customCSS = ["css/extended/custom-colors.css"]
+  disableFingerprinting = true
 
 [params.homeInfoParams]
   Title = "Welcome to M.Solien's world"
