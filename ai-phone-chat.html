@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#d9d2c7" />
+  <title>陪伴式本地 AI 聊天前端</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <style>
+    :root {
+      --bg: #ece6db;
+      --paper: #f4efe6;
+      --frost: rgba(255, 255, 255, 0.35);
+      --text: #4f4a43;
+      --subtle: #7b7469;
+      --you-bubble: #fcf9f2;
+      --me-bubble: #d9e4db;
+      --card-shadow: 0 16px 40px rgba(114, 100, 83, 0.1);
+      --radius-xl: 26px;
+      --radius-lg: 20px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      min-height: 100dvh;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(255,255,255,0.45), transparent 45%),
+        repeating-linear-gradient(25deg, rgba(255,255,255,0.2) 0 2px, transparent 2px 6px),
+        var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+    .phone-shell {
+      width: min(430px, 100%);
+      height: min(920px, calc(100dvh - 40px));
+      border-radius: 34px;
+      background: linear-gradient(160deg, rgba(255,255,255,.5), rgba(239,232,221,.85));
+      box-shadow: 0 30px 60px rgba(91, 79, 65, .2);
+      border: 1px solid rgba(255, 255, 255, .6);
+      overflow: hidden;
+      position: relative;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .screen { height: 100%; display: none; }
+    .screen.active { display: flex; flex-direction: column; }
+
+    .home {
+      padding: 18px;
+      gap: 12px;
+      overflow: auto;
+      padding-bottom: 98px;
+    }
+
+    .clock-card, .days-card, .tile, .panel, .chat-input-wrap, .music-capsule {
+      border-radius: var(--radius-xl);
+      background: linear-gradient(145deg, rgba(255,255,255,.6), rgba(242,236,226,.8));
+      border: 1px solid rgba(255,255,255,0.7);
+      box-shadow: var(--card-shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+    .clock-card::before,.days-card::before,.tile::before,.panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(35deg, rgba(255,255,255,0.2) 0 1px, transparent 1px 6px);
+      pointer-events: none;
+      opacity: .45;
+    }
+    .clock-card, .days-card { padding: 18px 20px; }
+    .clock-time { font-size: 46px; font-weight: 300; letter-spacing: 2px; }
+    .clock-date { margin-top: 6px; color: var(--subtle); }
+    .days-title { font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--subtle); }
+    .days-count { margin-top: 6px; font-size: 26px; font-weight: 600; }
+
+    .bento {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: 130px 130px;
+      gap: 12px;
+    }
+    .tile {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: transform .2s ease;
+    }
+    .tile:hover { transform: translateY(-2px); }
+    .tile h3 { margin: 0; font-size: 17px; }
+    .tile p { margin: 0; color: var(--subtle); font-size: 12px; line-height: 1.45; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+    }
+    .topbar button { border: 0; background: transparent; font-size: 16px; color: var(--text); cursor: pointer; }
+    .panel {
+      margin: 0 12px 12px;
+      padding: 14px;
+      flex: 1;
+      overflow: auto;
+    }
+    .row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+    input, textarea, select {
+      width: 100%; border: 0; border-radius: 12px; padding: 10px;
+      background: rgba(255,255,255,0.75); color: var(--text);
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    .btn { border: 0; border-radius: 999px; padding: 8px 14px; background: #d6ccb9; color: #3d382f; cursor: pointer; }
+    .btn.secondary { background: #cfded2; }
+
+    .messages { flex: 1; overflow: auto; padding: 10px 12px 90px; display: flex; flex-direction: column; gap: 12px; }
+    .msg { display: flex; gap: 8px; align-items: flex-end; }
+    .msg.me { flex-direction: row-reverse; }
+    .avatar {
+      width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(0,0,0,.06);
+      object-fit: cover; cursor: pointer;
+      background: #f4efe5;
+    }
+    .bubble {
+      max-width: 74%; padding: 10px 12px; border-radius: 16px;
+      font-size: 14px; line-height: 1.45;
+      box-shadow: 0 8px 20px rgba(78,68,59,.08);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg.you .bubble { background: var(--you-bubble); }
+    .msg.me .bubble { background: var(--me-bubble); }
+    .bubble img { max-width: 100%; border-radius: 12px; display: block; }
+
+    .chat-input-wrap {
+      position: absolute;
+      left: 12px; right: 12px; bottom: 12px;
+      padding: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .chat-input-wrap input { flex: 1; }
+
+    .tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+    .tabs button { border: 0; border-radius: 999px; padding: 6px 12px; background: rgba(255,255,255,.7); cursor: pointer; }
+    .tabs button.active { background: #d9e4db; }
+
+    .music-capsule {
+      position: absolute;
+      left: 14px; right: 14px; bottom: 12px;
+      padding: 10px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px;
+      z-index: 30;
+    }
+    .tiny { font-size: 12px; color: var(--subtle); }
+  </style>
+</head>
+<body>
+  <div class="phone-shell">
+    <section class="screen home active" id="homeScreen">
+      <article class="clock-card">
+        <div class="clock-time" id="clockTime">--:--</div>
+        <div class="clock-date" id="clockDate">----年--月--日</div>
+      </article>
+      <article class="days-card">
+        <div class="days-title">初遇 · 2024-06-22</div>
+        <div class="days-count" id="daysMatter">相伴第 -- 天</div>
+      </article>
+      <div class="bento">
+        <button class="tile" data-open="chatScreen"><h3>主卧聊天室</h3><p>纸感对话、头像更换、图片消息</p></button>
+        <button class="tile" data-open="profilesScreen"><h3>Profiles</h3><p>You / Me 人设与记忆摘要</p></button>
+        <button class="tile" data-open="diaryScreen"><h3>日记书信 & 多媒体</h3><p>diary / letters / media / books</p></button>
+        <button class="tile" data-open="settingsScreen"><h3>设置与安全</h3><p>API / 外观 / 导入导出</p></button>
+      </div>
+    </section>
+
+    <section class="screen" id="chatScreen">
+      <div class="topbar"><button data-back>← 返回</button><strong>主卧聊天室</strong></div>
+      <div class="messages" id="messages"></div>
+      <div class="chat-input-wrap">
+        <button class="btn" id="sendImageBtn">图片</button>
+        <input id="chatInput" placeholder="写下想说的话…" />
+        <button class="btn secondary" id="sendBtn">发送</button>
+      </div>
+    </section>
+
+    <section class="screen" id="profilesScreen">
+      <div class="topbar"><button data-back>← 返回</button><strong>Profiles 区</strong></div>
+      <div class="panel">
+        <h3>You</h3><input id="youName" placeholder="名字" /><textarea id="youPersona" placeholder="个性设定"></textarea><textarea id="youMemory" placeholder="记忆摘要"></textarea>
+        <h3>Me</h3><input id="meName" placeholder="名字" /><textarea id="mePersona" placeholder="个性设定"></textarea><textarea id="meMemory" placeholder="记忆摘要"></textarea>
+        <button class="btn" id="saveProfiles">保存 Profiles</button>
+      </div>
+    </section>
+
+    <section class="screen" id="diaryScreen">
+      <div class="topbar"><button data-back>← 返回</button><strong>日记 & 记录区</strong></div>
+      <div class="panel">
+        <div class="tabs" id="recordTabs"></div>
+        <textarea id="recordEditor" placeholder="在这里记录温柔日常…"></textarea>
+        <button class="btn" id="saveRecord">保存当前条目</button>
+      </div>
+    </section>
+
+    <section class="screen" id="settingsScreen">
+      <div class="topbar"><button data-back>← 返回</button><strong>设置与安全</strong></div>
+      <div class="panel">
+        <h3>API 调用配置</h3>
+        <input id="apiUrl" placeholder="API URL" /><input id="apiKey" placeholder="API Key" /><input id="apiModel" placeholder="Model" />
+        <button class="btn" id="saveApi">保存 API 配置</button>
+        <h3>UI 自定义</h3>
+        <div class="row"><span class="tiny">聊天气泡（You）</span><input type="color" id="youColor" /></div>
+        <div class="row"><span class="tiny">聊天气泡（Me）</span><input type="color" id="meColor" /></div>
+        <div class="row"><span class="tiny">背景壁纸</span><input type="file" id="wallpaperInput" accept="image/*" /></div>
+        <h3>数据安全</h3>
+        <div class="row"><button class="btn" id="exportBtn">导出 JSON</button><input type="file" id="importInput" accept="application/json" /></div>
+      </div>
+    </section>
+
+    <div class="music-capsule" id="musicCapsule">
+      <div>
+        <strong id="songName">本地音乐胶囊</strong>
+        <div class="tiny" id="songMeta">未载入音频</div>
+      </div>
+      <div class="row" style="margin:0">
+        <button class="btn" id="importAudio">导入</button>
+        <button class="btn" id="prevSong">◀</button>
+        <button class="btn" id="playPause">▶</button>
+        <button class="btn" id="nextSong">▶▶</button>
+      </div>
+      <input type="file" id="audioInput" accept="audio/*" multiple hidden />
+      <audio id="audioPlayer"></audio>
+    </div>
+  </div>
+
+<script>
+const KEY = 'local-companion-v1';
+const defaults = { chat: [], avatars: {}, profiles: {}, records: { diary:'', letters:'', media:'', books:'' }, settings: { apiUrl:'', apiKey:'', apiModel:'', youColor:'#fcf9f2', meColor:'#d9e4db', wallpaper:'' }, music: { playlist: [], idx: 0 } };
+let store = JSON.parse(localStorage.getItem(KEY) || 'null') || structuredClone(defaults);
+const save = () => localStorage.setItem(KEY, JSON.stringify(store));
+
+function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('musicCapsule').style.display = id==='homeScreen' ? 'flex':'none'; }
+document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>showScreen(b.dataset.open));
+document.querySelectorAll('[data-back]').forEach(b=>b.onclick=()=>showScreen('homeScreen'));
+
+function tick(){ const now = new Date(); document.getElementById('clockTime').textContent = now.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}); document.getElementById('clockDate').textContent = now.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'}); const start = new Date('2024-06-22T00:00:00'); const days = Math.floor((now-start)/86400000)+1; document.getElementById('daysMatter').textContent = `相伴第 ${days} 天`; }
+setInterval(tick,1000); tick();
+
+const avatarPicker = document.createElement('input'); avatarPicker.type='file'; avatarPicker.accept='image/*';
+function renderChat(){ const box=document.getElementById('messages'); box.innerHTML=''; store.chat.forEach((m,i)=>{ const item=document.createElement('div'); item.className=`msg ${m.role}`; const av=document.createElement('img'); av.className='avatar'; av.src = store.avatars[m.role] || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMzAiIGZpbGw9IiNlOWUyZDciLz48L3N2Zz4='; av.onclick=()=>{avatarPicker.onchange=e=>{const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{store.avatars[m.role]=r.result; save(); renderChat();}; r.readAsDataURL(f);}; avatarPicker.click();}; const bubble=document.createElement('div'); bubble.className='bubble'; if(m.type==='image'){ const img=document.createElement('img'); img.src=m.content; bubble.appendChild(img);} else bubble.textContent=m.content; item.append(av,bubble); box.appendChild(item); }); box.scrollTop=box.scrollHeight; }
+function pushMsg(role, content, type='text'){ store.chat.push({role,content,type,time:Date.now()}); save(); renderChat(); }
+document.getElementById('sendBtn').onclick=()=>{ const v=document.getElementById('chatInput').value.trim(); if(!v)return; pushMsg('me',v); document.getElementById('chatInput').value=''; };
+document.getElementById('sendImageBtn').onclick=()=>{ avatarPicker.onchange=e=>{const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>pushMsg('me', r.result, 'image'); r.readAsDataURL(f);}; avatarPicker.click(); };
+
+['youName','youPersona','youMemory','meName','mePersona','meMemory'].forEach(id=>document.getElementById(id).value=store.profiles[id]||'');
+document.getElementById('saveProfiles').onclick=()=>{ ['youName','youPersona','youMemory','meName','mePersona','meMemory'].forEach(id=>store.profiles[id]=document.getElementById(id).value); save(); alert('Profiles 已保存'); };
+
+const recordTypes=['diary','letters','media','books']; let activeRecord='diary';
+const tabs=document.getElementById('recordTabs');
+recordTypes.forEach(t=>{const b=document.createElement('button'); b.textContent=t; b.onclick=()=>{activeRecord=t; renderRecordTabs();}; tabs.appendChild(b);});
+function renderRecordTabs(){ [...tabs.children].forEach((c,i)=>c.classList.toggle('active',recordTypes[i]===activeRecord)); document.getElementById('recordEditor').value=store.records[activeRecord]||''; }
+document.getElementById('saveRecord').onclick=()=>{store.records[activeRecord]=document.getElementById('recordEditor').value; save(); alert(`${activeRecord} 已保存`);}; renderRecordTabs();
+
+['apiUrl','apiKey','apiModel'].forEach(id=>document.getElementById(id).value=store.settings[id]||'');
+const youColor=document.getElementById('youColor'), meColor=document.getElementById('meColor');
+youColor.value=store.settings.youColor; meColor.value=store.settings.meColor;
+function applyTheme(){ document.documentElement.style.setProperty('--you-bubble', store.settings.youColor); document.documentElement.style.setProperty('--me-bubble', store.settings.meColor); if(store.settings.wallpaper) document.body.style.backgroundImage = `url(${store.settings.wallpaper})`; }
+document.getElementById('saveApi').onclick=()=>{ ['apiUrl','apiKey','apiModel'].forEach(id=>store.settings[id]=document.getElementById(id).value); store.settings.youColor=youColor.value; store.settings.meColor=meColor.value; save(); applyTheme(); alert('设置已保存'); };
+document.getElementById('wallpaperInput').onchange=e=>{const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{store.settings.wallpaper=r.result; save(); applyTheme();}; r.readAsDataURL(f);};
+
+document.getElementById('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(store,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='companion-backup.json'; a.click(); URL.revokeObjectURL(a.href);};
+document.getElementById('importInput').onchange=e=>{const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{try{store=Object.assign(structuredClone(defaults),JSON.parse(r.result)); save(); location.reload();}catch{alert('JSON 导入失败');}}; r.readAsText(f);};
+
+const audioPlayer=document.getElementById('audioPlayer');
+function refreshSong(){ const cur=store.music.playlist[store.music.idx]; document.getElementById('songName').textContent=cur?.name||'本地音乐胶囊'; document.getElementById('songMeta').textContent=cur ? `${store.music.idx+1}/${store.music.playlist.length}` : '未载入音频'; if(cur) audioPlayer.src=cur.data; save(); }
+document.getElementById('importAudio').onclick=()=>document.getElementById('audioInput').click();
+document.getElementById('audioInput').onchange=e=>{ const fs=[...e.target.files]; if(!fs.length)return; Promise.all(fs.map(f=>new Promise(res=>{const r=new FileReader(); r.onload=()=>res({name:f.name,data:r.result}); r.readAsDataURL(f);}))).then(list=>{store.music.playlist.push(...list); refreshSong();}); };
+document.getElementById('playPause').onclick=()=>{ if(audioPlayer.paused){audioPlayer.play();} else audioPlayer.pause(); };
+document.getElementById('prevSong').onclick=()=>{ if(!store.music.playlist.length)return; store.music.idx=(store.music.idx-1+store.music.playlist.length)%store.music.playlist.length; refreshSong(); audioPlayer.play(); };
+document.getElementById('nextSong').onclick=()=>{ if(!store.music.playlist.length)return; store.music.idx=(store.music.idx+1)%store.music.playlist.length; refreshSong(); audioPlayer.play(); };
+audioPlayer.onended=()=>document.getElementById('nextSong').click();
+
+applyTheme(); renderChat(); refreshSong();
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>
